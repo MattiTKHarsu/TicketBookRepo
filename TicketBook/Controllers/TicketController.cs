@@ -13,6 +13,7 @@ namespace TicketBook.Controllers
     [ApiController]
     public class TicketController : Controller
     {
+
         
         private readonly DataContext _context;
 
@@ -24,7 +25,31 @@ namespace TicketBook.Controllers
         [HttpGet]
         public async Task<ActionResult<List<Ticket>>> Get()
         {
-            return Ok(await _context.Tickets.ToListAsync());
+             
+            var tickets = from t in _context.Tickets
+                            select t;
+            List<Ticket> response = new List<Ticket>();
+            Console.WriteLine("ERROR: Database connection failed 1. ");
+            try {
+                // Only the open Tickets will be inserted into response,
+                // and then the response will ordered by category and then
+                // by Timestamp from newer Tickets to older Tickets
+                //
+                Console.WriteLine("ERROR: Database connection failed 2. ");
+                tickets = tickets.OrderBy(t => t.Category)
+                                 .ThenByDescending(t => t.TimeStamp)
+                                 .Where(t => t.Status == StatusClass.Open);
+
+                Console.WriteLine("ERROR: Database connection failed 3. ");
+                response = await tickets.ToListAsync();
+            }
+            catch
+            {
+                // This message should be written to logfile, but the logfile is missing !!
+                Console.WriteLine("ERROR: Database connection failed. ");
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, "Cannot read data from Repository");
+            }
+            return Ok( response);
         }
 
         [HttpGet("{id}")]
@@ -39,6 +64,7 @@ namespace TicketBook.Controllers
         [HttpPost]
         public async Task<ActionResult<List<Ticket>>> AddTicket(Ticket ticket)
         {
+            ticket.TimeStamp = DateTime.Now;
             _context.Tickets.Add(ticket);
             await _context.SaveChangesAsync();
             return Ok(await _context.Tickets.ToListAsync());
@@ -47,14 +73,14 @@ namespace TicketBook.Controllers
         [HttpPut]
         public async Task<ActionResult<List<Ticket>>> UpdateTicket(Ticket request)
         {
-            
+
             var dbTicket = await _context.Tickets.FindAsync(request.Id);
             if (dbTicket == null) return BadRequest("Ticket not found");
 
-            dbTicket.DeviceId    = request.DeviceId;
+            dbTicket.DeviceId = request.DeviceId;
             dbTicket.Description = request.Description;
-            dbTicket.Category    = request.Category;
-            dbTicket.Status      = request.Status;
+            dbTicket.Category = request.Category;
+            dbTicket.Status = request.Status;
 
             await _context.SaveChangesAsync();
 
@@ -67,7 +93,7 @@ namespace TicketBook.Controllers
         {
             var dbTicket = await _context.Tickets.FindAsync(id);
             if (dbTicket == null) return BadRequest("Ticket not found");
-        
+
             _context.Tickets.Remove(dbTicket);
             await _context.SaveChangesAsync();
             return Ok(await _context.Tickets.ToListAsync());
