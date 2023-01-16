@@ -11,6 +11,7 @@ namespace TicketBook.Data
 		}
 
 		public DbSet<Ticket> Tickets { get; set; }
+		public DbSet<Device> Devices { get; set; }
 	}
 }
 
