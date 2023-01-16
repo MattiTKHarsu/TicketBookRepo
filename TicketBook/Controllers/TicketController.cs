@@ -1,11 +1,28 @@
-﻿using System;
+﻿//-----------------------------------------------------------------------------
+//   -- T I C K E T   R E P O S I T O R Y   E X A M P L E   P R O G R A M --
+//   
+//		Company: 		Etteplan Oy
+//   	
+//		Programmer: 	Matti Harsu
+//
+//      Function:       Controller
+//
+//		Functionality:
+//      This program work as Back-End part for recording servive request.
+//      Application contains 1) Create record, 2) Read record, 3) Upadate
+//      record and 4) Delete record function. In addition all service records
+//      and records regarding defined devices can be listed.
+//
+//		Libraries:
+//		- 
+//
+//-----------------------------------------------------------------------------
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using TicketBook.Models;
-
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace TicketBook.Controllers
 {
@@ -14,7 +31,7 @@ namespace TicketBook.Controllers
     public class TicketController : Controller
     {
 
-        
+        // Database context is defined for Business Logic  
         private readonly DataContext _context;
 
         public TicketController(DataContext context)
@@ -22,6 +39,7 @@ namespace TicketBook.Controllers
             _context = context;
         }
 
+        // - - - - -   HTTP API inteface  - - - - -
         //
         // All Tickets are returned in response message
         //
@@ -31,8 +49,7 @@ namespace TicketBook.Controllers
              
             var tickets = from t in _context.Tickets
                             select t;
-            List<Ticket> response = new List<Ticket>();
-            Console.WriteLine("GET");
+            List<Ticket> response = new List<Ticket>();     
 
             try {
                 // Only the open Tickets will be inserted into response,
@@ -60,7 +77,6 @@ namespace TicketBook.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Ticket>> Get(int id)
         {
-
             try
             {
                 var ticket = await _context.Tickets.FindAsync(id);
@@ -82,24 +98,32 @@ namespace TicketBook.Controllers
         [HttpGet("Device/{id}")]
         public async Task<ActionResult<Ticket>> GetWithDevice(int id)
         {
+            var tickets = from t in _context.Tickets
+                          select t;
+            List<Ticket> response = new List<Ticket>();
 
-            Console.WriteLine("Request OK");
-            return Ok();
-            //try
-            //{
-            //    var ticket = await _context.Tickets.FindAsync(id);
-            //    if (ticket == null) return BadRequest("Ticket not found");
+            try
+            {
+                // Lets check first that requested device can be found from db
+                var device = await _context.Devices.FindAsync(id);
+                if (device == null) return BadRequest("Device not found");
 
-            //    return Ok(ticket);
-            //}
-            //catch
-            //{
+                // Collect Tickets which contains requested DeviceId to response
+                tickets = tickets.Where(t => t.DeviceId == id);
+                // Database search couldn't get Tickets
+                // OBS. 0 Tickets is anyway OK.
+                if (tickets == null) return BadRequest("Ticket search didn't succeed");
+
+                response = await tickets.ToListAsync();
+                return Ok(response);
+            }
+            catch
+            {
                 // This message should be written to logfile, but the logservice is missing !!
-            //    Console.WriteLine("ERROR: Database connection failed. ");
-            //    return StatusCode(StatusCodes.Status503ServiceUnavailable, "Cannot Read data from Repository");
-            //}
+                Console.WriteLine("ERROR: Database connection failed. ");
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, "Cannot Read data from Repository");
+            }
         }
-
 
         //
         // Ticket is stored into database and updated tickets were returned.
@@ -126,11 +150,9 @@ namespace TicketBook.Controllers
         //
         // Ticket is updated in the database and updated tickets were returned.
         //
-
         [HttpPut]
         public async Task<ActionResult<List<Ticket>>> UpdateTicket(Ticket request)
         {
-
             try
             {
                 var dbTicket = await _context.Tickets.FindAsync(request.Id);
