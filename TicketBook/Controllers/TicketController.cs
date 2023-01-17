@@ -109,7 +109,10 @@ namespace TicketBook.Controllers
                 if (device == null) return BadRequest("Device not found");
 
                 // Collect Tickets which contains requested DeviceId to response
-                tickets = tickets.Where(t => t.DeviceId == id);
+                tickets = tickets.OrderBy(t => t.Category)
+                                 .ThenByDescending(t => t.TimeStamp)
+                                 .Where(t => t.DeviceId == id);
+
                 // Database search couldn't get Tickets
                 // OBS. 0 Tickets is anyway OK.
                 if (tickets == null) return BadRequest("Ticket search didn't succeed");
